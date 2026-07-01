@@ -25,11 +25,6 @@ func main() {
 	}
 
 	defer conn.Close()
-	pubsub.PublishJSON(channel, routing.ExchangePerilDirect, routing.PauseKey, &routing.PlayingState{
-		IsPaused: true,
-	})
-
-	defer channel.Close()
 	fmt.Println("Connection sucessfull")
 
 	for {
