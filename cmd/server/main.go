@@ -27,6 +27,13 @@ func main() {
 	defer conn.Close()
 	fmt.Println("Connection sucessfull")
 
+	_, queue, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug, "durable")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf("Connected to queue: %s", queue)
+
 	for {
 		input := gamelogic.GetInput()
 		if len(input) == 0 {
