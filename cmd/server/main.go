@@ -20,7 +20,7 @@ func main() {
 	defer conn.Close()
 	fmt.Println("Connection sucessfull")
 
-	channel, queue, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug, "durable")
+	channel, queue, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug, pubsub.SimpleQueueDurable)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("Connected to queue: %s", queue)
+	log.Printf("Connected to queue: %v", queue)
 
 	for {
 		input := gamelogic.GetInput()

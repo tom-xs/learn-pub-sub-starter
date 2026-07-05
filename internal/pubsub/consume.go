@@ -7,7 +7,20 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-type SimpleQueueType string
+type SimpleQueueType int
+
+const (
+	SimpleQueueDurable SimpleQueueType = iota
+	SimpleQueueTransient
+)
+
+type AckType int
+
+const (
+	Ack AckType = iota
+	NackRequeue
+	NackDiscard
+)
 
 func DeclareAndBind(
 	conn *amqp.Connection,
@@ -30,8 +43,8 @@ func DeclareAndBind(
 		return nil, amqp.Queue{}, err
 	}
 
-	isDurable := queueType == "durable"
-	isTransient := queueType == "transient"
+	isDurable := queueType == SimpleQueueDurable
+	isTransient := queueType == SimpleQueueTransient
 	queue, err := channel.QueueDeclare(queueName, isDurable, isTransient, isTransient, false, nil)
 	if err != nil {
 		return nil, amqp.Queue{}, err
@@ -50,7 +63,7 @@ func SubscribeJSON[T any](
 	queueName,
 	key string,
 	queueType SimpleQueueType,
-	handler func(T),
+	handler func(T) AckType,
 ) error {
 	channel, queue, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
 	if err != nil {
@@ -66,8 +79,21 @@ func SubscribeJSON[T any](
 			if err := json.Unmarshal(i.Body, &body); err != nil {
 				log.Fatal(err)
 			}
-			handler(body)
-			i.Ack(false)
+			ack := handler(body)
+			switch ack {
+			case Ack:
+				log.Printf("Action for Ack happened: %v", ack)
+				i.Ack(false)
+			case NackRequeue:
+				log.Printf("Action for NackRequeue happened: %v", ack)
+				i.Nack(false, true)
+			case NackDiscard:
+				log.Printf("Action for NackDiscard happened: %v", ack)
+				i.Nack(false, false)
+			default:
+				log.Fatalf("Ack Type non-existent for msg: %v", i)
+			}
+
 		}
 	}()
 	return nil
