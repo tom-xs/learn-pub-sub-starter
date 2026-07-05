@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
 
 	utils "github.com/bootdotdev/learn-pub-sub-starter/cmd"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
@@ -19,15 +17,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	channel, err := conn.Channel()
+	defer conn.Close()
+	fmt.Println("Connection sucessfull")
+
+	channel, queue, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug, "durable")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	defer conn.Close()
-	fmt.Println("Connection sucessfull")
-
-	_, queue, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug, "durable")
+	err = channel.ExchangeDeclare(routing.ExchangePerilDirect, "direct", true, false, false, false, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -61,10 +59,4 @@ func main() {
 	}
 
 	defer channel.Close()
-
-	sigchan := make(chan os.Signal)
-	signal.Notify(sigchan, os.Interrupt)
-	<-sigchan
-	fmt.Println("Execution finished")
-	os.Exit(0)
 }
