@@ -45,7 +45,9 @@ func DeclareAndBind(
 
 	isDurable := queueType == SimpleQueueDurable
 	isTransient := queueType == SimpleQueueTransient
-	queue, err := channel.QueueDeclare(queueName, isDurable, isTransient, isTransient, false, nil)
+	queue, err := channel.QueueDeclare(queueName, isDurable, isTransient, isTransient, false, amqp.Table{
+		"x-dead-letter-exchange": "peril_dlx",
+	})
 	if err != nil {
 		return nil, amqp.Queue{}, err
 	}

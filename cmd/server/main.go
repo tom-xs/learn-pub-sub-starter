@@ -20,7 +20,7 @@ func main() {
 	defer conn.Close()
 	fmt.Println("Connection sucessfull")
 
-	channel, queue, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug, pubsub.SimpleQueueDurable)
+	channel, queue, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug+".*", pubsub.SimpleQueueDurable)
 	if err != nil {
 		log.Fatal(err)
 	}
