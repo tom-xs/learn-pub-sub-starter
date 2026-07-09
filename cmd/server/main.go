@@ -20,17 +20,15 @@ func main() {
 	defer conn.Close()
 	fmt.Println("Connection sucessfull")
 
-	channel, queue, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug+".*", pubsub.SimpleQueueDurable)
+	ch, err := conn.Channel()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Unable to create channel: %v", err)
 	}
 
-	err = channel.ExchangeDeclare(routing.ExchangePerilDirect, "direct", true, false, false, false, nil)
+	err = pubsub.SubscribeGob(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug+".*", pubsub.SimpleQueueDurable, handlerLogs())
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Unable to subscribe to gob: %v", err)
 	}
-
-	log.Printf("Connected to queue: %v", queue)
 
 	for {
 		input := gamelogic.GetInput()
@@ -40,14 +38,14 @@ func main() {
 
 		if input[0] == "pause" {
 			log.Println("Sending Pause signal")
-			pubsub.PublishJSON(channel, routing.ExchangePerilDirect, routing.PauseKey, &routing.PlayingState{
+			pubsub.PublishJSON(ch, routing.ExchangePerilDirect, routing.PauseKey, &routing.PlayingState{
 				IsPaused: true,
 			})
 			continue
 		}
 		if input[0] == "resume" {
 			log.Println("Sending Resume signal")
-			pubsub.PublishJSON(channel, routing.ExchangePerilDirect, routing.PauseKey, &routing.PlayingState{
+			pubsub.PublishJSON(ch, routing.ExchangePerilDirect, routing.PauseKey, &routing.PlayingState{
 				IsPaused: false,
 			})
 			continue
@@ -58,5 +56,18 @@ func main() {
 		}
 	}
 
-	defer channel.Close()
+	defer ch.Close()
+}
+
+func handlerLogs() func(gamelog routing.GameLog) pubsub.AckType {
+	return func(gamelog routing.GameLog) pubsub.AckType {
+		defer fmt.Print("> ")
+
+		err := gamelogic.WriteLog(gamelog)
+		if err != nil {
+			fmt.Printf("error writing log: %v\n", err)
+			return pubsub.NackRequeue
+		}
+		return pubsub.Ack
+	}
 }
